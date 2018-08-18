@@ -1,11 +1,14 @@
 import tensorflow as tf
 import yaml
 import os
+from tqdm import tqdm
 from object_detection.utils import dataset_util
 
 
 flags = tf.app.flags
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
+flags.DEFINE_string('input_yaml', '', 'Path to input yaml file')
+flags.DEFINE_boolean('test_dataset', '', 'Whether we are generating records for the test dataset')
 FLAGS = flags.FLAGS
 
 LABEL_DICT =  {
@@ -49,8 +52,7 @@ def create_tf_example(example):
     classes = [] # List of integer class id of bounding box (1 per box)
 
     for box in example['boxes']:
-        #if box['occluded'] is False:
-        #print("adding box")
+        #if box['occluded'] is False:        
         xmins.append(float(box['x_min'] / width))
         xmaxs.append(float(box['x_max'] / width))
         ymins.append(float(box['y_min'] / height))
@@ -77,33 +79,29 @@ def create_tf_example(example):
     return tf_example
 
 
-def main(_):
-    
+def main(_):    
     writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
     
-    # BOSCH
-    INPUT_YAML = "data/test-bosch/dataset_test_rgb/test.yaml"
-    examples = yaml.load(open(INPUT_YAML, 'rb').read())
-
-    #examples = examples[:10]  # for testing
+    # INPUT_YAML = "data/test-bosch/dataset_test_rgb/test.yaml"    
+    examples = yaml.load(open(FLAGS.input_yaml, 'rb').read())
+    
     len_examples = len(examples)
     print("Loaded ", len(examples), "examples")
 
+    print("Rewriting paths...")
     for i in range(len(examples)):
-        examples[i]['path'] = os.path.abspath(os.path.join(os.path.dirname(INPUT_YAML), examples[i]['path']))
+        if FLAGS.test_dataset:
+            file_name = examples[i]['path'].split("/")[-1]
+            examples[i]['path'] = str(os.path.abspath(os.path.join(os.path.dirname(FLAGS.input_yaml), file_name))) 
+        else:
+            examples[i]['path'] = str(os.path.abspath(os.path.join(os.path.dirname(FLAGS.input_yaml), examples[i]['path'])))
     
-    counter = 0
-    for example in examples:
+    print("Creating TF records...")
+    for example in tqdm(examples):
         tf_example = create_tf_example(example)
-        writer.write(tf_example.SerializeToString())
-
-        if counter % 10 == 0:
-            print("Percent done", (counter/len_examples)*100)
-        counter += 1
+        writer.write(tf_example.SerializeToString())       
 
     writer.close()
-
-
 
 if __name__ == '__main__':
     tf.app.run()
