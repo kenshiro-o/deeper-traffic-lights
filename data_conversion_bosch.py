@@ -8,7 +8,7 @@ from object_detection.utils import dataset_util
 flags = tf.app.flags
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
 flags.DEFINE_string('input_yaml', '', 'Path to input yaml file')
-flags.DEFINE_boolean('test_dataset', '', 'Whether we are generating records for the test dataset')
+flags.DEFINE_boolean('test_dataset', False, 'Whether we are generating records for the test dataset')
 FLAGS = flags.FLAGS
 
 LABEL_DICT =  {
@@ -82,7 +82,6 @@ def create_tf_example(example):
 def main(_):    
     writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
     
-    # INPUT_YAML = "data/test-bosch/dataset_test_rgb/test.yaml"    
     examples = yaml.load(open(FLAGS.input_yaml, 'rb').read())
     
     len_examples = len(examples)
@@ -91,8 +90,9 @@ def main(_):
     print("Rewriting paths...")
     for i in range(len(examples)):
         if FLAGS.test_dataset:
+            # Paths for the test dataset are incorrect - so we are making sure to fix this
             file_name = examples[i]['path'].split("/")[-1]
-            examples[i]['path'] = str(os.path.abspath(os.path.join(os.path.dirname(FLAGS.input_yaml), file_name))) 
+            examples[i]['path'] = str(os.path.abspath(os.path.join(os.path.dirname(FLAGS.input_yaml), 'rgb/test/' + file_name)))
         else:
             examples[i]['path'] = str(os.path.abspath(os.path.join(os.path.dirname(FLAGS.input_yaml), examples[i]['path'])))
     
